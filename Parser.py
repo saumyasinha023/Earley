@@ -8,10 +8,10 @@ from collections import defaultdict
 
 ps = PorterStemmer()
 
-
-@atexit.register
-def quit_gracefully():
-    print("ENDFILE")
+#
+# @atexit.register
+# def quit_gracefully():
+#     print("ENDFILE")
 
 
 def findType(inputToken):
@@ -28,9 +28,9 @@ def findType(inputToken):
 print("Stemmer: ")
 grammar = defaultdict(list)
 partofspeech = set()
+
 for line in fileinput.input():
     s = re.search('[^(a-zA-Z|\*|\s|\:|\=|\;|\-|\||\#|\.|\?|\!|\,|\'|\")]', line)
-    print(s)
     if s is not None and s.group(0) is not None:
         exit(126)
         # @atexit.register(error_quit())
@@ -67,8 +67,10 @@ for line in fileinput.input():
             if subpart[i].islower():
                 if LHS != 'W':
                     partofspeech.add(LHS)
-            if LHS == 'W':
-                RHS = ps.stem(subpart[i])
+            if LHS == 'W' and subpart[i] is not '':
+                a = re.search('[a-zA-Z\-]+', subpart[i])
+                b = a.group(0)
+                RHS = ps.stem(b)
             else:
                 RHS = subpart[i]
             grammar[LHS].append(RHS.rstrip())
@@ -89,11 +91,12 @@ for line in fileinput.input():
                     print(w, ' ', type_of_word, ' ', fileinput.lineno(), ' ', ps.stem(w), ' ')
                 else:
                     print(w, ' ', type_of_word, ' ', fileinput.lineno())
+print('ENDFILE\n')
 
-print("-----GRAMMAR------")
-for x in grammar:
-    print(x, ' : ', grammar[x])
-print('partofspeech: ', partofspeech)
+# print("-----GRAMMAR------")
+# for x in grammar:
+#     print(x, ' : ', grammar[x])
+# print('partofspeech: ', partofspeech)
 
 
 def extractAfterStarState(string):
