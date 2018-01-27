@@ -12,8 +12,7 @@ ps = PorterStemmer()
 def quit_gracefully():
     print("ENDFILE")
 
-def error_quit():
-    print("input is erroneous")
+
 
 def findType(inputToken):
     if(re.match('^[-+]?[0-9]+$', inputToken)):
@@ -29,16 +28,30 @@ print("Stemmer: ")
 grammar = defaultdict(list)
 partofspeech = set()
 for line in fileinput.input():
-    if re.match('[^(a-zA-Z|\*|\s|\:|\=|\;|\-|\|)]',line):
-        atexit.register(error_quit())
+    if re.match('[^(a-zA-Z|\*|\s|\:|\=|\;|\-|\||\#)]',line):
+        @atexit.register(error_quit())
+        def error_quit():
+            print("input is erroneous")
 
-    parts = re.match('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*]*)', line)
-    LHS = parts.group(1)
-
-    if parts.group(2).find('|') == -1 and LHS == 'W':
-        subpart = re.split('\s+', parts.group(2))
-    else:
-        subpart = re.split('\s*\|\s*', parts.group(2))
+    if re.match('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*]*)', line):
+        parts = re.match('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*]*)', line)
+        LHS = parts.group(1)
+        if parts.group(2).find('|') == -1 and LHS == 'W':
+            subpart = re.split('\s+', parts.group(2))
+        else:
+            subpart = re.split('\s*\|\s*', parts.group(2))
+    elif re.match('\s*\|\s*[a-zA-Z\-\s]+',line):
+        childpart = re.match('\s*\|\s*([a-zA-Z\-\s]+)',line)
+        childsubpart = childpart.group(1)
+        grammar[LHS].append(childsubpart.rstrip())
+        # try:
+        #     childpart.group(2)
+        # except IndexError:
+        #     print("")
+        # else:
+        #     grammar[LHS].append(childpart.group(2))
+    elif re.match('\#\s*[a-zA-Z]+',line):
+        continue
 
     for i in range(len(subpart)):
         if subpart[i].islower():
@@ -53,33 +66,23 @@ for line in fileinput.input():
     for w in word_tokenize(line):
         type_of_word = findType(w)
         if line.find('=') == -1:
-            print(w, ' ', type_of_word, ' ', fileinput.lineno())
+            if re.match('\|*\s*([a-zA-Z\-\s]+)',w):
+                stemparts = re.split('\|',w)
+                for i in range(len(stemparts)):
+                    type_of_word = findType(stemparts[i])
+                    print(stemparts[i], ' ', type_of_word, ' ', fileinput.lineno())
+            else:
+                print(w, ' ', type_of_word, ' ', fileinput.lineno())
+
         else:
             if re.match('[A-Za-z]',w) and w != "W":
                 print(w,' ',type_of_word,' ',fileinput.lineno(),' ',ps.stem(w),' ')
             else:
                 print(w, ' ', type_of_word, ' ', fileinput.lineno())
 
-for x in grammar:
-    print (x,' : ',grammar[x])
-print('partofspeech: ',partofspeech)
-
-# pos = ["Verb", "Aux", "Det", "Proper-Noun", "Pronoun", "Noun", "Prep"]
-# dict = {"S": ["NP VP", "Aux NP VP", "VP"],
-#         "NP": ["Pronoun", "Proper-Noun", "Det Nominal"],
-#         "VP": ["Verb", "Verb NP", "Verb NP PP", "Verb PP", "VP PP"],
-#         "Aux": ["can", "will"],
-#         "Det": ["the", "that"],
-#         "Pronoun": ["he", "she"],
-#         "Proper-Noun": ["mary", "john"],
-#         "Nominal": ["Noun", "Nominal Noun", "Nominal PP"],
-#         "Noun": ["book", "flight"],
-#         "Verb": ["do", "work", "book"],
-#         "PP": ["Prep NP"],
-#         "Prep": ["in", "on", "at"],
-#         "W": ["book", "that", "flight"]
-#         }
-
+# for x in grammar:
+#     print (x,' : ',grammar[x])
+# print('partofspeech: ',partofspeech)
 
 def extractAfterStarState(string):
     emails = re.search(r'\*\s*(.*)\b', string)
