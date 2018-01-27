@@ -1,6 +1,6 @@
-
 import re
 import atexit
+import sys
 import fileinput
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
@@ -8,81 +8,93 @@ from collections import defaultdict
 
 ps = PorterStemmer()
 
+
 @atexit.register
 def quit_gracefully():
     print("ENDFILE")
 
 
-
 def findType(inputToken):
-    if(re.match('^[-+]?[0-9]+$', inputToken)):
+    if (re.match('^[-+]?[0-9]+$', inputToken)):
         return "INT"
-    elif(re.match('[+-]?([0-9]*[.])?[0-9]+',inputToken)):
+    elif (re.match('[+-]?([0-9]*[.])?[0-9]+', inputToken)):
         return "DOUBLE"
-    elif(re.match('\W',inputToken)):
+    elif (re.match('\W', inputToken)):
         return "OP"
     elif (type('\w') is str):
         return "STRING"
+
 
 print("Stemmer: ")
 grammar = defaultdict(list)
 partofspeech = set()
 for line in fileinput.input():
-    if re.match('[^(a-zA-Z|\*|\s|\:|\=|\;|\-|\||\#)]',line):
-        @atexit.register(error_quit())
-        def error_quit():
-            print("input is erroneous")
+    s = re.search('[^(a-zA-Z|\*|\s|\:|\=|\;|\-|\||\#|\.|\?|\!|\,|\'|\")]', line)
+    print(s)
+    if s is not None and s.group(0) is not None:
+        exit(126)
+        # @atexit.register(error_quit())
+        # def error_quit():
+        #     print("input is erroneous")
 
-    if re.match('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*]*)', line):
-        parts = re.match('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*]*)', line)
-        LHS = parts.group(1)
-        if parts.group(2).find('|') == -1 and LHS == 'W':
-            subpart = re.split('\s+', parts.group(2))
-        else:
-            subpart = re.split('\s*\|\s*', parts.group(2))
-    elif re.match('\s*\|\s*[a-zA-Z\-\s]+',line):
-        childpart = re.match('\s*\|\s*([a-zA-Z\-\s]+)',line)
-        childsubpart = childpart.group(1)
-        grammar[LHS].append(childsubpart.rstrip())
-        # try:
-        #     childpart.group(2)
-        # except IndexError:
-        #     print("")
-        # else:
-        #     grammar[LHS].append(childpart.group(2))
-    elif re.match('\#\s*[a-zA-Z]+',line):
-        continue
+    for each in line.split(';'):
+        each = each.lstrip()
 
-    for i in range(len(subpart)):
-        if subpart[i].islower():
-            if LHS != 'W':
-                partofspeech.add(LHS)
-        if LHS == 'W':
-            RHS = ps.stem(subpart[i])
-        else:
-            RHS = subpart[i]
-        grammar[LHS].append(RHS.rstrip())
-
-    for w in word_tokenize(line):
-        type_of_word = findType(w)
-        if line.find('=') == -1:
-            if re.match('\|*\s*([a-zA-Z\-\s]+)',w):
-                stemparts = re.split('\|',w)
-                for i in range(len(stemparts)):
-                    type_of_word = findType(stemparts[i])
-                    print(stemparts[i], ' ', type_of_word, ' ', fileinput.lineno())
+        if re.search('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*]*)', each) is not None:
+            parts = re.search('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*\'\,\.\?\!]*)', each)
+            LHS = parts.group(1)
+            if parts.group(2).find('|') == -1 and LHS == 'W':
+                print("part2", parts.group(2))
+                subpart = re.split('\s+', parts.group(2))
+                print("subpart", subpart)
             else:
-                print(w, ' ', type_of_word, ' ', fileinput.lineno())
+                subpart = re.split('\s*\|\s*', parts.group(2))
+        elif re.search('\s*\|\s*[a-zA-Z\-\s]+', each) is not None:
+            childpart = re.findall('\s*\|\s*([a-zA-Z\-\s]+)', each)
+            for x in childpart:
+                childsubpart = x
+                grammar[LHS].append(childsubpart.rstrip())
+            # try:
+            #     childpart.group(2)
+            # except IndexError:
+            #     print("")
+            # else:
+            #     grammar[LHS].append(childpart.group(2))
+        elif re.search('\#\s*[a-zA-Z]+', each) is not None:
+            continue
 
-        else:
-            if re.match('[A-Za-z]',w) and w != "W":
-                print(w,' ',type_of_word,' ',fileinput.lineno(),' ',ps.stem(w),' ')
+        for i in range(len(subpart)):
+            if subpart[i].islower():
+                if LHS != 'W':
+                    partofspeech.add(LHS)
+            if LHS == 'W':
+                RHS = ps.stem(subpart[i])
             else:
-                print(w, ' ', type_of_word, ' ', fileinput.lineno())
+                RHS = subpart[i]
+            grammar[LHS].append(RHS.rstrip())
 
-# for x in grammar:
-#     print (x,' : ',grammar[x])
-# print('partofspeech: ',partofspeech)
+        for w in word_tokenize(each):
+            type_of_word = findType(w)
+            if line.find('=') == -1:
+                if re.search('\|*\s*([a-zA-Z\-\s]+)', w) is not None:
+                    stem_parts = re.split('\|', w)
+                    for i in range(len(stem_parts)):
+                        type_of_word = findType(stem_parts[i])
+                        print(stem_parts[i], ' ', type_of_word, ' ', fileinput.lineno())
+                else:
+                    print(w, ' ', type_of_word, ' ', fileinput.lineno())
+
+            else:
+                if re.search('[A-Za-z]', w) is not None and w != "W":
+                    print(w, ' ', type_of_word, ' ', fileinput.lineno(), ' ', ps.stem(w), ' ')
+                else:
+                    print(w, ' ', type_of_word, ' ', fileinput.lineno())
+
+print("-----GRAMMAR------")
+for x in grammar:
+    print(x, ' : ', grammar[x])
+print('partofspeech: ', partofspeech)
+
 
 def extractAfterStarState(string):
     emails = re.search(r'\*\s*(.*)\b', string)
