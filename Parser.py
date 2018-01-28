@@ -8,6 +8,11 @@ from collections import defaultdict
 
 ps = PorterStemmer()
 
+#
+# @atexit.register
+# def quit_gracefully():
+#     print("ENDFILE")
+
 
 def findType(inputToken):
     if (re.match('^[-+]?[0-9]+$', inputToken)):
@@ -88,15 +93,15 @@ for line in fileinput.input():
                     print(w, ' ', type_of_word, ' ', fileinput.lineno(), ' ', ps.stem(w), ' ')
                 else:
                     print(w, ' ', type_of_word, ' ', fileinput.lineno())
+
 print("ENDFILE")
 print("-----GRAMMAR------")
 for x in grammar:
     print(x, ' : ', grammar[x])
 print('partofspeech: ', partofspeech)
 
-
 def extractAfterStarState(string):
-    emails = re.search(r'\*\s*(.*)\b', string)
+    emails = re.search(r'\^\s*(.*)\b', string)
     if emails:
         final = emails.group(1).split()[0]
         return (final)
@@ -125,8 +130,8 @@ def completer(row_elem):
     LHS = find_LHS(row_elem[0])
     for each in s[row_elem[1]]:
         if ("^" + " " + LHS) in each[0] and LHS != "S":
-            left = each[0].split('*')[0]
-            right = each[0].split('*')[1]
+            left = each[0].split('^')[0]
+            right = each[0].split('^')[1]
             mid = right.split(" ")[1]
             toAppend = [left + mid + " ^ " + " ".join(right.split()[1:]), each[1], row_elem[2], "completer"]
             enqueue(row_elem[2], toAppend)
