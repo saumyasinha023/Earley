@@ -8,6 +8,7 @@ from collections import defaultdict
 
 ps = PorterStemmer()
 
+
 #
 # @atexit.register
 # def quit_gracefully():
@@ -43,7 +44,7 @@ for line in fileinput.input():
     elif line.isspace():
         continue
     else:
-        if count==0:
+        if count == 0:
             print("Stemmer: ")
             count += 1
 
@@ -69,8 +70,10 @@ for line in fileinput.input():
             if subpart[i].islower():
                 if LHS != 'W':
                     partofspeech.add(LHS)
-            if LHS == 'W' and subpart[i] is not '':
+            if LHS == 'W':
                 a = re.search('[a-zA-Z\-]+', subpart[i])
+                if subpart[i] == '' or a == None:
+                    continue
                 b = a.group(0)
                 RHS = ps.stem(b)
             else:
@@ -95,10 +98,12 @@ for line in fileinput.input():
                     print(w, ' ', type_of_word, ' ', fileinput.lineno())
 
 print("ENDFILE")
-print("-----GRAMMAR------")
-for x in grammar:
-    print(x, ' : ', grammar[x])
-print('partofspeech: ', partofspeech)
+
+
+# print("-----GRAMMAR------")
+# for x in grammar:
+#     print(x, ' : ', grammar[x])
+# print('partofspeech: ', partofspeech)
 
 def extractAfterStarState(string):
     emails = re.search(r'\^\s*(.*)\b', string)
@@ -181,6 +186,7 @@ def initialize(words):
                 for j in grammar[x]:
                     if j == word:
                         found += 1
+
         if found == 0:
             exit("Erroneous input")
     Earley_parser(grammar["W"])
