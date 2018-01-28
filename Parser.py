@@ -174,6 +174,15 @@ def enqueue(state, chart_entry):
 def initialize(words):
     global s
     s = [[] for i in range(len(words) + 1)]
+    for word in grammar["W"]:
+        found = 0
+        for x in grammar:
+            if x != "W":
+                for j in grammar[x]:
+                    if j == word:
+                        found += 1
+        if found == 0:
+            exit("Erroneous input")
     Earley_parser(grammar["W"])
 
 
