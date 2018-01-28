@@ -9,11 +9,6 @@ from collections import defaultdict
 ps = PorterStemmer()
 
 
-@atexit.register
-def quit_gracefully():
-    print("ENDFILE")
-
-
 def findType(inputToken):
     if (re.match('^[-+]?[0-9]+$', inputToken)):
         return "INT"
@@ -23,19 +18,29 @@ def findType(inputToken):
         return "OP"
     elif (type('\w') is str):
         return "STRING"
+    # else:
+
+    #     @atexit.register
+    #     def quit_gracefully():
+    #         print("ENDFILE")
+    #         sys.exit(0)
 
 
-print("Stemmer: ")
+count = 0
 grammar = defaultdict(list)
 partofspeech = set()
+
 for line in fileinput.input():
+    # sys.exit("ENDFILE")
     s = re.search('[^(a-zA-Z|\*|\s|\:|\=|\;|\-|\||\#|\.|\?|\!|\,|\'|\")]', line)
-    print(s)
     if s is not None and s.group(0) is not None:
-        exit(126)
-        # @atexit.register(error_quit())
-        # def error_quit():
-        #     print("input is erroneous")
+        exit("Erroneous input")
+    elif line.isspace():
+        continue
+    else:
+        if count==0:
+            print("Stemmer: ")
+            count += 1
 
     for each in line.split(';'):
         each = each.lstrip()
@@ -44,9 +49,7 @@ for line in fileinput.input():
             parts = re.search('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*\'\,\.\?\!]*)', each)
             LHS = parts.group(1)
             if parts.group(2).find('|') == -1 and LHS == 'W':
-                print("part2", parts.group(2))
                 subpart = re.split('\s+', parts.group(2))
-                print("subpart", subpart)
             else:
                 subpart = re.split('\s*\|\s*', parts.group(2))
         elif re.search('\s*\|\s*[a-zA-Z\-\s]+', each) is not None:
@@ -54,12 +57,6 @@ for line in fileinput.input():
             for x in childpart:
                 childsubpart = x
                 grammar[LHS].append(childsubpart.rstrip())
-            # try:
-            #     childpart.group(2)
-            # except IndexError:
-            #     print("")
-            # else:
-            #     grammar[LHS].append(childpart.group(2))
         elif re.search('\#\s*[a-zA-Z]+', each) is not None:
             continue
 
@@ -67,8 +64,10 @@ for line in fileinput.input():
             if subpart[i].islower():
                 if LHS != 'W':
                     partofspeech.add(LHS)
-            if LHS == 'W':
-                RHS = ps.stem(subpart[i])
+            if LHS == 'W' and subpart[i] is not '':
+                a = re.search('[a-zA-Z\-]+', subpart[i])
+                b = a.group(0)
+                RHS = ps.stem(b)
             else:
                 RHS = subpart[i]
             grammar[LHS].append(RHS.rstrip())
@@ -89,7 +88,7 @@ for line in fileinput.input():
                     print(w, ' ', type_of_word, ' ', fileinput.lineno(), ' ', ps.stem(w), ' ')
                 else:
                     print(w, ' ', type_of_word, ' ', fileinput.lineno())
-
+print("ENDFILE")
 print("-----GRAMMAR------")
 for x in grammar:
     print(x, ' : ', grammar[x])
@@ -110,7 +109,7 @@ def predictor(row_elem):
     LHS = find_LHS(row_elem[0])
     if LHS not in partofspeech:
         for each in grammar[RHS]:
-            toAppend = [RHS + " -> " + " * " + each, row_elem[2], row_elem[2], "predictor"]
+            toAppend = [RHS + " -> " + " ^ " + each, row_elem[2], row_elem[2], "predictor"]
             if toAppend not in s[row_elem[2]]:
                 enqueue(row_elem[2], toAppend)
 
@@ -118,18 +117,18 @@ def predictor(row_elem):
 def scanner(row_elem, i):
     fetched = extractAfterStarState(row_elem[0])
     if i < len(grammar["W"]) and grammar["W"][i] in grammar[fetched]:
-        toAppend = [fetched + " -> " + grammar["W"][i] + " * ", row_elem[2], row_elem[2] + 1, "scanner"]
+        toAppend = [fetched + " -> " + grammar["W"][i] + " ^ ", row_elem[2], row_elem[2] + 1, "scanner"]
         enqueue(row_elem[2] + 1, toAppend)
 
 
 def completer(row_elem):
     LHS = find_LHS(row_elem[0])
     for each in s[row_elem[1]]:
-        if ("*" + " " + LHS) in each[0] and LHS != "S":
+        if ("^" + " " + LHS) in each[0] and LHS != "S":
             left = each[0].split('*')[0]
             right = each[0].split('*')[1]
             mid = right.split(" ")[1]
-            toAppend = [left + mid + " * " + " ".join(right.split()[1:]), each[1], row_elem[2], "completer"]
+            toAppend = [left + mid + " ^ " + " ".join(right.split()[1:]), each[1], row_elem[2], "completer"]
             enqueue(row_elem[2], toAppend)
 
 
@@ -145,7 +144,7 @@ def find_LHS(string):
 def Earley_parser(words):
     global s
     global current_pos
-    enqueue(0, ["Z -> * S", 0, 0])
+    enqueue(0, ["Z -> ^ S", 0, 0])
     for i in range(len(words) + 1):
         for row_elem in s[i]:
             RHS = extractAfterStarState(row_elem[0])
