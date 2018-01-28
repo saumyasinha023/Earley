@@ -34,6 +34,10 @@ def findType(inputToken):
 count = 0
 grammar = defaultdict(list)
 partofspeech = set()
+semi = 0
+colon = 0
+tempC = tempS = 0
+
 
 for line in fileinput.input():
     # sys.exit("ENDFILE")
@@ -46,23 +50,38 @@ for line in fileinput.input():
         if count==0:
             print("Stemmer: ")
             count += 1
+    semi = tempS + line.count(';')
+    colon = tempC + line.count(':')
+    print(semi," ",colon)
+    if semi == colon:
+        semi = colon = tempS = tempC = 0
+    elif semi > colon:
+        sys.exit("Input is erroneous")
+    else:
+        tempC = colon
+        tempS = semi
 
     for each in line.split(';'):
+        # print("each before",each)
         each = each.lstrip()
-
-        if re.search('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*]*)', each) is not None:
-            parts = re.search('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*\'\,\.\?\!]*)', each)
+        # print("each after",each)
+        if re.search('^([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*\'\"\,\.\?\!]*)', each) is not None:
+            parts = re.search('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*\'\"\,\.\?\!]*)', each)
             LHS = parts.group(1)
             if parts.group(2).find('|') == -1 and LHS == 'W':
                 subpart = re.split('\s+', parts.group(2))
             else:
                 subpart = re.split('\s*\|\s*', parts.group(2))
-        elif re.search('\s*\|\s*[a-zA-Z\-\s]+', each) is not None:
+        elif re.findall('\s*\|\s*[a-zA-Z\-\s]+', each) is not None:
+            # print("i am in 2 ")
             childpart = re.findall('\s*\|\s*([a-zA-Z\-\s]+)', each)
+            # print("childpart",childpart)
             for x in childpart:
                 childsubpart = x
+                # print(x)
                 grammar[LHS].append(childsubpart.rstrip())
         elif re.search('\#\s*[a-zA-Z]+', each) is not None:
+            # print("i am in 3 ")
             continue
 
         for i in range(len(subpart)):
@@ -77,7 +96,7 @@ for line in fileinput.input():
                 RHS = subpart[i]
             grammar[LHS].append(RHS.rstrip())
 
-        for w in word_tokenize(each):
+        for w in word_tokenize(line):
             type_of_word = findType(w)
             if line.find('=') == -1:
                 if re.search('\|*\s*([a-zA-Z\-\s]+)', w) is not None:
@@ -93,7 +112,8 @@ for line in fileinput.input():
                     print(w, ' ', type_of_word, ' ', fileinput.lineno(), ' ', ps.stem(w), ' ')
                 else:
                     print(w, ' ', type_of_word, ' ', fileinput.lineno())
-
+if semi < colon:
+    sys.exit("input is erroneous")
 print("ENDFILE")
 print("-----GRAMMAR------")
 for x in grammar:
@@ -114,7 +134,7 @@ def predictor(row_elem):
     LHS = find_LHS(row_elem[0])
     if LHS not in partofspeech:
         for each in grammar[RHS]:
-            toAppend = [RHS + " -> " + " ^ " + each, row_elem[2], row_elem[2], "predictor"]
+            toAppend = [RHS + " -> " + " ^ " + each, row_elem[2], row_elem[2], "Predictor"]
             if toAppend not in s[row_elem[2]]:
                 enqueue(row_elem[2], toAppend)
 
@@ -122,7 +142,7 @@ def predictor(row_elem):
 def scanner(row_elem, i):
     fetched = extractAfterStarState(row_elem[0])
     if i < len(grammar["W"]) and grammar["W"][i] in grammar[fetched]:
-        toAppend = [fetched + " -> " + grammar["W"][i] + " ^ ", row_elem[2], row_elem[2] + 1, "scanner"]
+        toAppend = [fetched + " -> " + grammar["W"][i] + " ^ ", row_elem[2], row_elem[2] + 1, "Scanner"]
         enqueue(row_elem[2] + 1, toAppend)
 
 
@@ -133,7 +153,7 @@ def completer(row_elem):
             left = each[0].split('^')[0]
             right = each[0].split('^')[1]
             mid = right.split(" ")[1]
-            toAppend = [left + mid + " ^ " + " ".join(right.split()[1:]), each[1], row_elem[2], "completer"]
+            toAppend = [left + mid + " ^ " + " ".join(right.split()[1:]), each[1], row_elem[2], "Completer"]
             enqueue(row_elem[2], toAppend)
 
 
@@ -149,7 +169,7 @@ def find_LHS(string):
 def Earley_parser(words):
     global s
     global current_pos
-    enqueue(0, ["Z -> ^ S", 0, 0])
+    enqueue(0, ["Z -> ^ S", 0, 0,"Dummy Start State"])
     for i in range(len(words) + 1):
         for row_elem in s[i]:
             RHS = extractAfterStarState(row_elem[0])
@@ -177,7 +197,14 @@ def initialize(words):
     Earley_parser(grammar["W"])
 
 
+chart_number = 0
+check_chart = 0
+print("\nParsed Chart: ")
 initialize(grammar["W"])
 for each in s:
     for elem in each:
-        print(elem)
+        if(check_chart == elem[2]):
+            print("\nChart [",elem[2],"]\n")
+            check_chart += 1
+        print("S",chart_number," ",elem[0],"\t\t\t","[",elem[1],",",elem[2],"]","\t\t",elem[3])
+        chart_number += 1
