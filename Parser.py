@@ -50,7 +50,7 @@ for line in fileinput.input():
     for each in line.split(';'):
         each = each.lstrip()
 
-        if re.search('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*]*)', each) is not None:
+        if re.search('^([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*]*)', each) is not None:
             parts = re.search('([a-zA-Z\-]+)\s*[\:|\=]\s*([a-zA-Z\-\|\*\s*\'\,\.\?\!]*)', each)
             LHS = parts.group(1)
             if parts.group(2).find('|') == -1 and LHS == 'W':
