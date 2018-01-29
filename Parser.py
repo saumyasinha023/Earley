@@ -35,6 +35,7 @@ def findType(inputToken):
 count = 0
 grammar = defaultdict(list)
 partofspeech = set()
+words = list()
 semi = 0
 colon = 0
 tempC = tempS = 0
@@ -43,7 +44,7 @@ for line in fileinput.input():
     # sys.exit("ENDFILE")
     s = re.search('[^(a-zA-Z|\*|\s|\:|\=|\;|\-|\||\#|\.|\?|\!|\,|\'|\")]', line)
     if s is not None and s.group(0) is not None:
-        exit("Erroneous input")
+        exit("Erroneous input: Illegal word")
     elif line.isspace():
         continue
     else:
@@ -64,8 +65,9 @@ for line in fileinput.input():
 
     for each in line.split(';'):
         each = each.lstrip()
-
+        print("each",each)
         if re.search('^([a-zA-Z\-]+)\s*[\:|\=]+\s*([a-zA-Z\-\|\*\s*\'\"\,\.\?\!]*)', each) is not None:
+            # print("I am in part 1")
             parts = re.search('^([a-zA-Z\-]+)\s*[\:|\=]+\s*([a-zA-Z\-\|\*\s*\'\"\,\.\?\!]*)', each)
             LHS = parts.group(1)
             if parts.group(2).find('|') == -1 and LHS == 'W':
@@ -73,6 +75,7 @@ for line in fileinput.input():
             else:
                 subpart = re.split('\s*\|\s*', parts.group(2))
         elif re.search('\s*\|\s*[a-zA-Z\-\s]+', each) is not None:
+            # print("I am in part 2")
             childpart = re.findall('\s*\|\s*([a-zA-Z\-\s]+)', each)
             for x in childpart:
                 childsubpart = x
@@ -85,18 +88,29 @@ for line in fileinput.input():
                 if LHS != 'W':
                     partofspeech.add(LHS)
             if LHS == 'W':
+                # print("I am here")
                 a = re.search('[a-zA-Z\-]+', subpart[i])
                 if subpart[i] == '' or a == None:
                     continue
                 b = a.group(0)
                 RHS = ps.stem(b)
+                RHS = RHS.lower()
             else:
                 RHS = subpart[i]
             grammar[LHS].append(RHS.rstrip())
 
-        for w in word_tokenize(each):
+        for w in word_tokenize(line):
+            words.append(w)
             type_of_word = findType(w)
+
             if line.find('=') == -1:
+                print(w)
+            #     pipe = line.count('|')
+            #     if pipe == 1:
+            #         if line.find(w) > line.find('|'):
+            #             new_grammar = w
+            #     else:
+
                 if re.search('\|*\s*([a-zA-Z\-\s]+)', w) is not None:
                     stem_parts = re.split('\|', w)
                     for i in range(len(stem_parts)):
@@ -111,7 +125,44 @@ for line in fileinput.input():
                 else:
                     print(w, ' ', type_of_word, ' ', fileinput.lineno())
 
+if semi < colon:
+    sys.exit("input is erroneous: Semicolon missing")
 print("ENDFILE")
+
+print(words)
+print(len(words))
+tempW = ""
+for j in range(len(words)):
+    if re.search('[a-zA-Z]+',words[j]):
+        print(j," ",words[j])
+        tempW = tempW + words[j] + " "
+        print("tempW ",tempW)
+    elif words[j] is ':':
+        print(j, " ", words[j])
+        LHS = words[j-1]
+        print("LHS ",LHS)
+        tempW = ""
+    elif words[j] is ';':
+        print(j, " ", words[j])
+        grammar[LHS].append(tempW)
+        print("APPENDED ",tempW,"in ",LHS)
+        tempW = ""
+    elif words[j] is '|':
+        print(j, " ", words[j])
+        grammar[LHS].append(tempW)
+        print("APPENDED ", tempW, "in ", LHS)
+        tempW = ""
+# print(words)
+
+result = {}
+
+for key,value in grammar.items():
+    print(key,value)
+    myset = set(value)
+    if values not in result.values():
+        result[key] = value
+
+print(result)
 
 
 print("-----GRAMMAR------")
@@ -202,7 +253,7 @@ def initialize(words):
                         found += 1
 
         if found == 0:
-            exit("Erroneous input")
+            exit("Erroneous input: Parser not complete")
     Earley_parser(grammar["W"])
 
 
